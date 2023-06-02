@@ -6,10 +6,12 @@ import javafx.stage.Stage;
 
 import java.io.IOException;
 
-public class ServerView extends Application {
-    public void serverView(Stage stage) throws IOException {
+public class ServerView{
+    public void serverView() throws IOException {
+        System.out.println("ServerView");
         FXMLLoader fxmlLoader = new FXMLLoader(Application.class.getResource("Server.fxml"));
         Scene scene = new Scene(fxmlLoader.load());
+        Stage stage = new Stage();
         stage.setTitle("Server");
         stage.setScene(scene);
         stage.show();

@@ -19,7 +19,7 @@ public class Server {
     public Server(Integer port)
     {
         try{
-            new ServerView();
+            InitServerView();
             server = new ServerSocket(port);
             System.out.println("Server started");
             System.out.println("Waiting for a client ...");
@@ -46,6 +46,14 @@ public class Server {
         }
         catch(IOException i){
             System.out.println(i);
+        }
+    }
+    public void InitServerView(){
+        try {
+            new ServerView();
+        }
+        catch (Exception e) {
+            e.printStackTrace();
         }
     }
 }
