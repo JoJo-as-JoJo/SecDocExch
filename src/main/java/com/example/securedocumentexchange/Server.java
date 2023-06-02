@@ -1,7 +1,10 @@
 package com.example.securedocumentexchange;
 
 import javafx.fxml.FXML;
+import javafx.fxml.FXMLLoader;
+import javafx.scene.Scene;
 import javafx.scene.control.ListView;
+import javafx.stage.Stage;
 
 import java.net.*;
 import java.io.*;
@@ -16,6 +19,7 @@ public class Server {
     public Server(Integer port)
     {
         try{
+            new ServerView();
             server = new ServerSocket(port);
             System.out.println("Server started");
             System.out.println("Waiting for a client ...");

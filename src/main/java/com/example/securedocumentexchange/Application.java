@@ -15,13 +15,6 @@ public class Application extends javafx.application.Application {
         stage.setScene(scene);
         stage.show();
     }
-    public void serverView(Stage stage) throws  IOException{
-        FXMLLoader fxmlLoader = new FXMLLoader(Application.class.getResource("Server.fxml"));
-        Scene scene = new Scene(fxmlLoader.load());
-        stage.setTitle("Server");
-        stage.setScene(scene);
-        stage.show();
-    }
     public static void main(String[] args) {
         launch();
     }
