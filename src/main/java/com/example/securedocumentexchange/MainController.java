@@ -25,6 +25,8 @@ public class MainController {
     @FXML
     private TextField pathToPrivateKey;
     @FXML
+    private TextField pathToFile;
+    @FXML
     private TabPane tabs;
     @FXML
     private Tab settings;
@@ -40,6 +42,8 @@ public class MainController {
     private Button clientUp;
     @FXML
     private Button serverUp;
+    @FXML
+    private Button chooseFileToSend;
     @FXML
     protected void connectToReceiver(ActionEvent event) {
         clientView.setDisable(false);
@@ -62,6 +66,7 @@ public class MainController {
         switch (btn.getId()){
             case "choosePubKeyBtn" -> pathToPubKey.setText(file.getAbsolutePath());
             case "choosePrivateKeyBtn" -> pathToPrivateKey.setText(file.getAbsolutePath());
+            case "chooseFileToSend" -> pathToFile.setText(file.getAbsolutePath());
         }
     }
 }
