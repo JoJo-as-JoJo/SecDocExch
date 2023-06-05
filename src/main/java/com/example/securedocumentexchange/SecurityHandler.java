@@ -14,6 +14,10 @@ import java.nio.file.StandardOpenOption;
 import java.security.*;
 
 public class SecurityHandler {
+   public Path getPath(String initialFilePath, Path destDirPath){
+      Path path = Path.of(String.valueOf(destDirPath), String.valueOf(Path.of(initialFilePath).getFileName()));
+      return path;
+   }
    public byte[] encrypt(byte[] message, PublicKey publicKey) throws GeneralSecurityException{
       Cipher cipher = Cipher.getInstance("RSA");
       cipher.init(Cipher.ENCRYPT_MODE, publicKey);
@@ -26,17 +30,17 @@ public class SecurityHandler {
       byte[] decryptedBytes = cipher.doFinal(message);
       return decryptedBytes;
    }
-   public Path encryptDocument(File document, File openKeyFile) throws IOException, GeneralSecurityException{
+   public String encryptDocument(File document, Path pthToDir, File openKeyFile) throws IOException, GeneralSecurityException{
       SshPublicKey sshPublicKey = SshKeyUtils.getPublicKey(openKeyFile);
       PublicKey publicKey = sshPublicKey.getJCEPublicKey();
       byte[] documentBytes = Files.readAllBytes(document.toPath());
       byte[] encryptedBytes = encrypt(documentBytes, publicKey);
       String encryptedFileName = document.getName()+".sde";
-      Path encryptedFilePath = document.toPath().resolveSibling(encryptedFileName);
-      Files.write(encryptedFilePath, encryptedBytes, StandardOpenOption.CREATE);
+      String encryptedFilePath = String.valueOf(pthToDir)+"\\"+encryptedFileName;
+      Files.write(Path.of(encryptedFilePath), encryptedBytes, StandardOpenOption.CREATE);
       return encryptedFilePath;
    }
-   public Path decryptDocument(File document, File privateKeyFile) throws IOException, GeneralSecurityException{
+   public String decryptDocument(File document, File privateKeyFile) throws IOException, GeneralSecurityException{
       PrivateKey privateKey = null;
       try {
          privateKey = SshKeyUtils.getPrivateKey(privateKeyFile,"").getPrivateKey().getJCEPrivateKey();
@@ -48,6 +52,6 @@ public class SecurityHandler {
       String decryptedFileName = document.getName().replace(".sde","");
       Path decryptedFilePath = document.toPath().resolveSibling(decryptedFileName);
       Files.write(decryptedFilePath, decryptedBytes, StandardOpenOption.CREATE);
-      return decryptedFilePath;
+      return String.valueOf(decryptedFilePath);
    }
 }

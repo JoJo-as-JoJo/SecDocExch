@@ -1,51 +1,72 @@
 package com.example.securedocumentexchange;
 import java.net.*;
 import java.io.*;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.concurrent.Exchanger;
 
-public class Client {
-    private Socket socket = null;
-    private DataInputStream input = null;
-    private DataOutputStream out = null;
+public class Client extends Thread{
+    private boolean doStop = false;
+    private String address;
+    private Integer port;
+    private Path tmpDir;
+    private Path pubKeyPath;
+    private Path privateKeyPath;
+    private SecurityHandler securityHandler;
+    private SocketHandler socketHandler;
+    private Socket socket;
+    private DataInputStream input;
+    private DataOutputStream out;
 
-    public Client(String address, int port)
-    {
-        try
-        {
-            socket = new Socket(address, port);
-            System.out.println("Connected");
-            input = new DataInputStream(System.in);
-            out = new DataOutputStream(socket.getOutputStream());
+    public synchronized void doStop(){
+        this.doStop = true;
+    }
+    private synchronized boolean keepRunning(){
+        return this.doStop = false;
+    }
+    public Client(String address, Integer port, String initOpenKeyPath, String initPrivateKeyPath) throws IOException {
+        this.address = address;
+        this.port = port;
+        this.tmpDir = Files.createTempDirectory("");
+        this.securityHandler = new SecurityHandler();
+        this.socketHandler = new SocketHandler();
+        this.pubKeyPath = securityHandler.getPath(initOpenKeyPath, tmpDir);
+        this.privateKeyPath = securityHandler.getPath(initPrivateKeyPath, tmpDir);
+        try {
+            Files.copy(Paths.get(initOpenKeyPath), pubKeyPath);
+            Files.copy(Paths.get(initPrivateKeyPath), privateKeyPath);
         }
-        catch(UnknownHostException u)
-        {
-            System.out.println(u);
+        catch (Exception ec){
+            System.out.println(ec);
         }
-        catch(IOException i)
-        {
-            System.out.println(i);
+        this.socket = new Socket(address, port);
+        this.input = new DataInputStream(socket.getInputStream());
+        this.out = new DataOutputStream(socket.getOutputStream());
+    }
+    public synchronized Path getTmpDir(){
+        return tmpDir;
+    }
+    public synchronized DataOutputStream getOut(){
+        return out;
+    }
+    public synchronized SocketHandler getSocketHandler(){
+        return socketHandler;
+    }
+    public synchronized SecurityHandler getSecurityHandler(){
+        return securityHandler;
+    }
+    @Override
+    public void run() {
+        try {
+            socketHandler.sendFile(String.valueOf(pubKeyPath), "clientPubKey.pub", out);
+            socketHandler.receiveFile(String.valueOf(tmpDir),input);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
         }
-        String line = "";
-        while (!line.equals("End"))
-        {
-            try
-            {
-                line = input.readLine();
-                out.writeUTF(line);
-            }
-            catch(IOException i)
-            {
-                System.out.println(i);
-            }
-        }
-        try
-        {
-            input.close();
-            out.close();
-            socket.close();
-        }
-        catch(IOException i)
-        {
-            System.out.println(i);
+        while (!keepRunning()){
+
         }
     }
 }
+//String.valueOf(tmpDir)+"\\server_id_rsa.pub"

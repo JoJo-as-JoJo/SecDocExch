@@ -11,9 +11,14 @@ import javafx.stage.Window;
 
 import java.io.File;
 import java.io.IOException;
+import java.security.GeneralSecurityException;
+import java.util.concurrent.Exchanger;
 
 public class MainController {
     Window currentWindow;
+    private Server server;
+    private Client client;
+    private SecurityHandler securityHandler = new SecurityHandler();
     @FXML
     private TextField receiverAddress;
     @FXML
@@ -25,7 +30,9 @@ public class MainController {
     @FXML
     private TextField pathToPrivateKey;
     @FXML
-    private TextField pathToFile;
+    private TextField pathToFileServer;
+    @FXML
+    private TextField pathToFileClient;
     @FXML
     private TabPane tabs;
     @FXML
@@ -43,17 +50,24 @@ public class MainController {
     @FXML
     private Button serverUp;
     @FXML
-    private Button chooseFileToSend;
+    private Button chooseFileToSendServerBtn;
     @FXML
-    protected void connectToReceiver(ActionEvent event) {
+    private Button chooseFileToSendClientBtn;
+    @FXML
+    void connectToReceiver(ActionEvent event) throws IOException {
         clientView.setDisable(false);
-        new ClientFactory(receiverAddress.getText(),Integer.parseInt(receiverPort.getText())).start();
+        client = new Client(receiverAddress.getText(),Integer.parseInt(receiverPort.getText()), pathToPubKey.getText(), pathToPrivateKey.getText());
+        client.start();
+        choosePubKeyBtn.setDisable(true);
+        choosePrivateKeyBtn.setDisable(true);
     }
     @FXML
-    protected void startServer(ActionEvent event) throws IOException {
-        System.out.println(tabs.getTabs());
+    void startServer(ActionEvent event) throws IOException {
         serverView.setDisable(false);
-        new ServerFactory(Integer.parseInt(serverPort.getText())).start();
+        server = new Server(Integer.parseInt(serverPort.getText()), pathToPubKey.getText(), pathToPrivateKey.getText());
+        server.start();
+        choosePubKeyBtn.setDisable(true);
+        choosePrivateKeyBtn.setDisable(true);
     }
     @FXML
     void chooseFile(ActionEvent event){
@@ -66,7 +80,20 @@ public class MainController {
         switch (btn.getId()){
             case "choosePubKeyBtn" -> pathToPubKey.setText(file.getAbsolutePath());
             case "choosePrivateKeyBtn" -> pathToPrivateKey.setText(file.getAbsolutePath());
-            case "chooseFileToSend" -> pathToFile.setText(file.getAbsolutePath());
+            case "chooseFileToSendServerBtn" -> pathToFileServer.setText(file.getAbsolutePath());
+            case "chooseFileToSendClientBtn" -> pathToFileClient.setText(file.getAbsolutePath());
+        }
+    }
+    @FXML
+    void sendFile(ActionEvent event) throws GeneralSecurityException, IOException {
+        Button btn = (Button) event.getSource();
+        switch (btn.getId()){
+            case "clientSend" -> {
+                String pthToEncFile = client.getSecurityHandler().encryptDocument(new File(pathToFileClient.getText()), client.getTmpDir(), new File(String.valueOf(client.getTmpDir())+"\\server_id_rsa.pub"));
+
+            }
+            case "serverSend" -> {
+            }
         }
     }
 }
