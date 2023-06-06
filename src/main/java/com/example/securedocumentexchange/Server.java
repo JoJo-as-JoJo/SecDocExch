@@ -28,40 +28,13 @@ public class Server extends Thread {
     private synchronized boolean keepRunning(){
         return this.doStop;
     }
-    public Server(Integer port, String initOpenKeyPath, String initPrivateKeyPath) throws IOException, NoSuchAlgorithmException {
+    public Server(Integer port) throws IOException, NoSuchAlgorithmException {
         this.port = port;
         this.tmpDir = Files.createTempDirectory("");
         this.securityHandler = new SecurityHandler();
         this.socketHandler = new SocketHandler();
-        this.pubKeyPath = securityHandler.getPath(initOpenKeyPath, tmpDir);
-        this.privateKeyPath = securityHandler.getPath(initPrivateKeyPath, tmpDir);
-        try {
-            Files.copy(Paths.get(initOpenKeyPath), pubKeyPath);
-            Files.copy(Paths.get(initPrivateKeyPath), privateKeyPath);
-        }
-        catch (Exception ec){
-            System.out.println(ec);
-        }
         this.serverSocket = new ServerSocket(port);
         this.secretKey = securityHandler.createSessionKey();
-    }
-    public synchronized Path getTmpDir(){
-        return tmpDir;
-    }
-    public synchronized DataInputStream getInput(){
-        return input;
-    }
-    public synchronized DataOutputStream getOut(){
-        return out;
-    }
-    public synchronized SocketHandler getSocketHandler(){
-        return socketHandler;
-    }
-    public synchronized SecurityHandler getSecurityHandler(){
-        return securityHandler;
-    }
-    public synchronized SecretKey getSecretKey(){
-        return secretKey;
     }
     @Override
     public void run() {
@@ -89,5 +62,9 @@ public class Server extends Thread {
                 throw new RuntimeException(e);
             }
         }
+    }
+    public void send(String pathToFile) throws Exception {
+        String pthToEncFile = securityHandler.encryptDocument(new File(pathToFile), tmpDir, secretKey);
+        socketHandler.sendFile(pthToEncFile, new File(pthToEncFile).getName(), out);
     }
 }

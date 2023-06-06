@@ -2,6 +2,7 @@ package com.example.securedocumentexchange;
 
 import com.sshtools.common.publickey.InvalidPassphraseException;
 import com.sshtools.common.publickey.SshKeyUtils;
+import com.sshtools.common.ssh.components.SshPrivateKey;
 import com.sshtools.common.ssh.components.SshPublicKey;
 
 import javax.crypto.*;
@@ -15,13 +16,11 @@ import java.security.*;
 
 public class SecurityHandler {
    public Path getPath(String initialFilePath, Path destDirPath){
-      Path path = Path.of(String.valueOf(destDirPath), String.valueOf(Path.of(initialFilePath).getFileName()));
-      return path;
+      return Path.of(String.valueOf(destDirPath), String.valueOf(Path.of(initialFilePath).getFileName()));
    }
    public String encryptDocument(File document, Path pthToDir, SecretKey secretKey) throws IOException, GeneralSecurityException{
       String encryptedFileName = document.getName()+".sde";
       String encryptedFilePath = String.valueOf(pthToDir)+File.separator+encryptedFileName;
-      System.out.println(encryptedFilePath);
       FileInputStream inputStream = new FileInputStream(document);
       FileOutputStream outputStream = new FileOutputStream(new File(encryptedFilePath));
       Cipher cipher = Cipher.getInstance("AES");
@@ -81,5 +80,13 @@ public class SecurityHandler {
       byte[] decryptedKey = cipher.doFinal(encryptedKey);
       SecretKey originalKey = new SecretKeySpec(decryptedKey, 0, decryptedKey.length,"AES");
       return originalKey;
+   }
+   public boolean validatePubKey(File pubKeyFile) throws IOException {
+      SshPublicKey sshPublicKey = SshKeyUtils.getPublicKey(pubKeyFile);
+      return true;
+   }
+   public boolean validatePrivateKey(File privateKeyFile) throws IOException, InvalidPassphraseException {
+      SshPrivateKey sshPrivateKey = SshKeyUtils.getPrivateKey(privateKeyFile, "").getPrivateKey();
+      return true;
    }
 }

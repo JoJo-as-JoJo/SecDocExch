@@ -1,16 +1,16 @@
 package com.example.securedocumentexchange;
+import com.sshtools.common.publickey.InvalidPassphraseException;
+
 import javax.crypto.SecretKey;
 import java.net.*;
 import java.io.*;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.concurrent.Exchanger;
+import java.security.GeneralSecurityException;
 
 public class Client extends Thread{
     private boolean doStop = false;
-    private String address;
-    private Integer port;
     private Path tmpDir;
     private Path pubKeyPath;
     private Path privateKeyPath;
@@ -27,42 +27,19 @@ public class Client extends Thread{
     private synchronized boolean keepRunning(){
         return doStop;
     }
-    public Client(String address, Integer port, String initOpenKeyPath, String initPrivateKeyPath) throws IOException {
-        this.address = address;
-        this.port = port;
+    public Client(String address, Integer port, String initOpenKeyPath, String initPrivateKeyPath) throws IOException, InvalidPassphraseException {
         this.tmpDir = Files.createTempDirectory("");
         this.securityHandler = new SecurityHandler();
         this.socketHandler = new SocketHandler();
-        this.pubKeyPath = securityHandler.getPath(initOpenKeyPath, tmpDir);
-        this.privateKeyPath = securityHandler.getPath(initPrivateKeyPath, tmpDir);
-        try {
+        if (securityHandler.validatePubKey(new File(initOpenKeyPath))==true && securityHandler.validatePrivateKey(new File(initPrivateKeyPath))==true){
+            this.pubKeyPath = securityHandler.getPath(initOpenKeyPath, tmpDir);
+            this.privateKeyPath = securityHandler.getPath(initPrivateKeyPath, tmpDir);
             Files.copy(Paths.get(initOpenKeyPath), pubKeyPath);
             Files.copy(Paths.get(initPrivateKeyPath), privateKeyPath);
-        }
-        catch (Exception ec){
-            System.out.println(ec);
         }
         this.socket = new Socket(address, port);
         this.input = new DataInputStream(socket.getInputStream());
         this.out = new DataOutputStream(socket.getOutputStream());
-    }
-    public synchronized Path getTmpDir(){
-        return tmpDir;
-    }
-    public synchronized DataInputStream getInput(){
-        return input;
-    }
-    public synchronized DataOutputStream getOut(){
-        return out;
-    }
-    public synchronized SocketHandler getSocketHandler(){
-        return socketHandler;
-    }
-    public synchronized SecurityHandler getSecurityHandler(){
-        return securityHandler;
-    }
-    public synchronized SecretKey getSecretKey(){
-        return secretKey;
     }
     @Override
     public void run() {
@@ -71,7 +48,7 @@ public class Client extends Thread{
             byte[] encryptedSessionKey = socketHandler.receiveKey(input);
             secretKey = securityHandler.decryptSessionKey(new File(String.valueOf(privateKeyPath)), encryptedSessionKey);
         } catch (Exception e) {
-            throw new RuntimeException(e);
+            doStop = true;
         }
         while (!keepRunning()){
             try {
@@ -81,5 +58,9 @@ public class Client extends Thread{
                 throw new RuntimeException(e);
             }
         }
+    }
+    public void send(String pathToFile) throws Exception {
+        String pthToEncFile = securityHandler.encryptDocument(new File(pathToFile), tmpDir, secretKey);
+        socketHandler.sendFile(pthToEncFile, new File(pthToEncFile).getName(), out);
     }
 }

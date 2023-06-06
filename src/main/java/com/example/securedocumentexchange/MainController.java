@@ -1,5 +1,6 @@
 package com.example.securedocumentexchange;
 
+import com.sshtools.common.publickey.InvalidPassphraseException;
 import javafx.event.ActionEvent;
 import javafx.event.EventHandler;
 import javafx.fxml.FXML;
@@ -7,20 +8,18 @@ import javafx.scene.control.Button;
 import javafx.scene.control.Tab;
 import javafx.scene.control.TabPane;
 import javafx.scene.control.TextField;
+import javafx.stage.DirectoryChooser;
 import javafx.stage.FileChooser;
 import javafx.stage.Window;
 
 import java.io.File;
 import java.io.IOException;
-import java.security.GeneralSecurityException;
 import java.security.NoSuchAlgorithmException;
-import java.util.concurrent.Exchanger;
 
 public class MainController {
     Window currentWindow;
     private Server server;
     private Client client;
-    private SecurityHandler securityHandler = new SecurityHandler();
     @FXML
     private TextField receiverAddress;
     @FXML
@@ -56,9 +55,9 @@ public class MainController {
     @FXML
     private Button chooseFileToSendClientBtn;
     @FXML
-    void connectToServer(ActionEvent event) throws IOException {
-        clientView.setDisable(false);
+    void connectToServer(ActionEvent event) throws IOException, InvalidPassphraseException {
         client = new Client(receiverAddress.getText(),Integer.parseInt(receiverPort.getText()), pathToPubKey.getText(), pathToPrivateKey.getText());
+        clientView.setDisable(false);
         client.start();
         choosePubKeyBtn.setDisable(true);
         choosePrivateKeyBtn.setDisable(true);
@@ -72,8 +71,8 @@ public class MainController {
     }
     @FXML
     void startServer(ActionEvent event) throws IOException, NoSuchAlgorithmException {
+        server = new Server(Integer.parseInt(serverPort.getText()));
         serverView.setDisable(false);
-        server = new Server(Integer.parseInt(serverPort.getText()), pathToPubKey.getText(), pathToPrivateKey.getText());
         server.start();
         choosePubKeyBtn.setDisable(true);
         choosePrivateKeyBtn.setDisable(true);
@@ -101,16 +100,25 @@ public class MainController {
         }
     }
     @FXML
+    void chooseDirectory(ActionEvent event){
+        DirectoryChooser directoryChooser = new DirectoryChooser();
+        File file = directoryChooser.showDialog(currentWindow);
+        if (file==null){
+            return;
+        }
+        Button btn = (Button) event.getSource();
+        switch (btn.getId()){
+        }
+    }
+    @FXML
     void sendFile(ActionEvent event) throws Exception {
         Button btn = (Button) event.getSource();
         switch (btn.getId()){
             case "clientSend" -> {
-                String pthToEncFile = client.getSecurityHandler().encryptDocument(new File(pathToFileClient.getText()), client.getTmpDir(), client.getSecretKey());
-                client.getSocketHandler().sendFile(pthToEncFile, new File(pthToEncFile).getName(), client.getOut());
+                client.send(pathToFileClient.getText());
             }
             case "serverSend" -> {
-                String pthToEncFile = server.getSecurityHandler().encryptDocument(new File(pathToFileServer.getText()), server.getTmpDir(), server.getSecretKey());
-                server.getSocketHandler().sendFile(pthToEncFile, new File(pthToEncFile).getName(), server.getOut());
+                server.send(pathToFileServer.getText());
             }
         }
     }
