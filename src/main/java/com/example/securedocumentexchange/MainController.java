@@ -1,6 +1,7 @@
 package com.example.securedocumentexchange;
 
 import javafx.event.ActionEvent;
+import javafx.event.EventHandler;
 import javafx.fxml.FXML;
 import javafx.scene.control.Button;
 import javafx.scene.control.Tab;
@@ -12,6 +13,7 @@ import javafx.stage.Window;
 import java.io.File;
 import java.io.IOException;
 import java.security.GeneralSecurityException;
+import java.security.NoSuchAlgorithmException;
 import java.util.concurrent.Exchanger;
 
 public class MainController {
@@ -54,20 +56,34 @@ public class MainController {
     @FXML
     private Button chooseFileToSendClientBtn;
     @FXML
-    void connectToReceiver(ActionEvent event) throws IOException {
+    void connectToServer(ActionEvent event) throws IOException {
         clientView.setDisable(false);
         client = new Client(receiverAddress.getText(),Integer.parseInt(receiverPort.getText()), pathToPubKey.getText(), pathToPrivateKey.getText());
         client.start();
         choosePubKeyBtn.setDisable(true);
         choosePrivateKeyBtn.setDisable(true);
+        clientUp.setText("Остановить соединение");
+        clientUp.setOnAction(new EventHandler<ActionEvent>() {
+            @Override
+            public void handle(ActionEvent event) {
+                client.doStop();
+            }
+        });
     }
     @FXML
-    void startServer(ActionEvent event) throws IOException {
+    void startServer(ActionEvent event) throws IOException, NoSuchAlgorithmException {
         serverView.setDisable(false);
         server = new Server(Integer.parseInt(serverPort.getText()), pathToPubKey.getText(), pathToPrivateKey.getText());
         server.start();
         choosePubKeyBtn.setDisable(true);
         choosePrivateKeyBtn.setDisable(true);
+        serverUp.setText("Остановить сервер");
+        serverUp.setOnAction(new EventHandler<ActionEvent>() {
+            @Override
+            public void handle(ActionEvent event) {
+                server.doStop();
+            }
+        });
     }
     @FXML
     void chooseFile(ActionEvent event){
@@ -85,14 +101,16 @@ public class MainController {
         }
     }
     @FXML
-    void sendFile(ActionEvent event) throws GeneralSecurityException, IOException {
+    void sendFile(ActionEvent event) throws Exception {
         Button btn = (Button) event.getSource();
         switch (btn.getId()){
             case "clientSend" -> {
-                String pthToEncFile = client.getSecurityHandler().encryptDocument(new File(pathToFileClient.getText()), client.getTmpDir(), new File(String.valueOf(client.getTmpDir())+"\\server_id_rsa.pub"));
-
+                String pthToEncFile = client.getSecurityHandler().encryptDocument(new File(pathToFileClient.getText()), client.getTmpDir(), client.getSecretKey());
+                client.getSocketHandler().sendFile(pthToEncFile, new File(pthToEncFile).getName(), client.getOut());
             }
             case "serverSend" -> {
+                String pthToEncFile = server.getSecurityHandler().encryptDocument(new File(pathToFileServer.getText()), server.getTmpDir(), server.getSecretKey());
+                server.getSocketHandler().sendFile(pthToEncFile, new File(pthToEncFile).getName(), server.getOut());
             }
         }
     }

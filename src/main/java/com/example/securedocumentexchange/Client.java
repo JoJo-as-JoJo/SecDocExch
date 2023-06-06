@@ -1,4 +1,5 @@
 package com.example.securedocumentexchange;
+import javax.crypto.SecretKey;
 import java.net.*;
 import java.io.*;
 import java.nio.file.Files;
@@ -18,12 +19,13 @@ public class Client extends Thread{
     private Socket socket;
     private DataInputStream input;
     private DataOutputStream out;
+    private SecretKey secretKey;
 
     public synchronized void doStop(){
         this.doStop = true;
     }
     private synchronized boolean keepRunning(){
-        return this.doStop = false;
+        return doStop;
     }
     public Client(String address, Integer port, String initOpenKeyPath, String initPrivateKeyPath) throws IOException {
         this.address = address;
@@ -47,6 +49,9 @@ public class Client extends Thread{
     public synchronized Path getTmpDir(){
         return tmpDir;
     }
+    public synchronized DataInputStream getInput(){
+        return input;
+    }
     public synchronized DataOutputStream getOut(){
         return out;
     }
@@ -56,17 +61,25 @@ public class Client extends Thread{
     public synchronized SecurityHandler getSecurityHandler(){
         return securityHandler;
     }
+    public synchronized SecretKey getSecretKey(){
+        return secretKey;
+    }
     @Override
     public void run() {
         try {
             socketHandler.sendFile(String.valueOf(pubKeyPath), "clientPubKey.pub", out);
-            socketHandler.receiveFile(String.valueOf(tmpDir),input);
+            byte[] encryptedSessionKey = socketHandler.receiveKey(input);
+            secretKey = securityHandler.decryptSessionKey(new File(String.valueOf(privateKeyPath)), encryptedSessionKey);
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
         while (!keepRunning()){
-
+            try {
+                String pathToEncFile = socketHandler.receiveFile(String.valueOf(tmpDir), input);
+                securityHandler.decryptDocument(new File(pathToEncFile), secretKey);
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
         }
     }
 }
-//String.valueOf(tmpDir)+"\\server_id_rsa.pub"

@@ -1,16 +1,18 @@
 package com.example.securedocumentexchange;
 
+import javax.crypto.SecretKey;
 import java.net.*;
 import java.io.*;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.security.NoSuchAlgorithmException;
 import java.util.concurrent.Exchanger;
 
 public class Server extends Thread {
     private boolean doStop = false;
     private Integer port;
-    public Path tmpDir;
+    private Path tmpDir;
     private Path pubKeyPath;
     private Path privateKeyPath;
     private SecurityHandler securityHandler;
@@ -19,13 +21,14 @@ public class Server extends Thread {
     private ServerSocket serverSocket;
     private DataInputStream input;
     private DataOutputStream out;
+    private SecretKey secretKey;
     public synchronized void doStop(){
         this.doStop = true;
     }
     private synchronized boolean keepRunning(){
-        return this.doStop = false;
+        return this.doStop;
     }
-    public Server(Integer port, String initOpenKeyPath, String initPrivateKeyPath) throws IOException {
+    public Server(Integer port, String initOpenKeyPath, String initPrivateKeyPath) throws IOException, NoSuchAlgorithmException {
         this.port = port;
         this.tmpDir = Files.createTempDirectory("");
         this.securityHandler = new SecurityHandler();
@@ -40,6 +43,7 @@ public class Server extends Thread {
             System.out.println(ec);
         }
         this.serverSocket = new ServerSocket(port);
+        this.secretKey = securityHandler.createSessionKey();
     }
     public synchronized Path getTmpDir(){
         return tmpDir;
@@ -47,11 +51,17 @@ public class Server extends Thread {
     public synchronized DataInputStream getInput(){
         return input;
     }
+    public synchronized DataOutputStream getOut(){
+        return out;
+    }
     public synchronized SocketHandler getSocketHandler(){
         return socketHandler;
     }
     public synchronized SecurityHandler getSecurityHandler(){
         return securityHandler;
+    }
+    public synchronized SecretKey getSecretKey(){
+        return secretKey;
     }
     @Override
     public void run() {
@@ -64,16 +74,20 @@ public class Server extends Thread {
         try {
             input = new DataInputStream(clientSocket.getInputStream());
             out = new DataOutputStream(clientSocket.getOutputStream());
-            socketHandler.receiveFile(String.valueOf(tmpDir),input);
-            socketHandler.sendFile(String.valueOf(pubKeyPath), "serverPubKey.pub", out);
+            socketHandler.receiveFile(String.valueOf(tmpDir), input);
+            socketHandler.sendKey(securityHandler.encryptSessionKey(new File(String.valueOf(tmpDir)+File.separator+"clientPubKey.pub"), secretKey), out);
         } catch (IOException e) {
             throw new RuntimeException(e);
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
         while (!keepRunning()){
-
+            try {
+                String pathToEncFile = socketHandler.receiveFile(String.valueOf(tmpDir), input);
+                securityHandler.decryptDocument(new File(pathToEncFile), secretKey);
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
         }
     }
 }
-//String.valueOf(tmpDir)+"\\client_id_rsa.pub"
