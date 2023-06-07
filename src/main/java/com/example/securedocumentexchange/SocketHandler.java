@@ -1,9 +1,10 @@
 package com.example.securedocumentexchange;
 
 import java.io.*;
+import java.lang.constant.Constable;
+
 public class SocketHandler {
     public void sendFile(String path, String fileNameForReceiver, DataOutputStream dataOutputStream) throws Exception {
-        System.out.println("trying to send file");
         dataOutputStream.writeUTF(fileNameForReceiver);
         int bytes = 0;
         File file = new File(path);
@@ -15,7 +16,6 @@ public class SocketHandler {
             dataOutputStream.flush();
         }
         fileInputStream.close();
-        System.out.println("file sent");
     }
     public String receiveFile(String path,DataInputStream dataInputStream) throws Exception {
         String fileName = dataInputStream.readUTF();
@@ -27,10 +27,14 @@ public class SocketHandler {
             fileOutputStream.write(buffer, 0, bytes);
             size -= bytes;
         }
-        System.out.println("File is Received");
-        System.out.println("File written in:"+path+File.separator+fileName);
         fileOutputStream.close();
-        return new String(path+File.separator+fileName);
+        return path+File.separator+fileName;
+    }
+    public void sendMessage(String message, DataOutputStream dataOutputStream) throws IOException {
+        dataOutputStream.writeUTF(message);
+    }
+    public String receiveMessage(DataInputStream dataInputStream) throws IOException {
+        return dataInputStream.readUTF();
     }
     public void sendKey(byte[] encryptedSessionKey, DataOutputStream dataOutputStream) throws IOException {
         dataOutputStream.writeInt(encryptedSessionKey.length);
@@ -41,5 +45,27 @@ public class SocketHandler {
         byte[] encryptedSessionKey = new byte[size];
         dataInputStream.read(encryptedSessionKey, 0, size);
         return encryptedSessionKey;
+    }
+    public void sendFlag(char flag, DataOutputStream dataOutputStream) throws IOException {
+        dataOutputStream.writeChar(flag);
+    }
+    public Constable receiveFlag(String path, DataInputStream dataInputStream){
+        try {
+            char flag = dataInputStream.readChar();
+            switch (flag){
+                case 'F' -> {
+                    return receiveFile(path, dataInputStream);
+                }
+                case 'K' -> {
+                    receiveFile(path, dataInputStream);
+                }
+                case 'M' -> {
+                    return receiveMessage(dataInputStream);
+                }
+            }
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+        return null;
     }
 }

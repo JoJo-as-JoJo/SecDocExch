@@ -13,6 +13,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.security.*;
+import java.util.Base64;
 
 public class SecurityHandler {
    public Path getPath(String initialFilePath, Path destDirPath){
@@ -36,9 +37,9 @@ public class SecurityHandler {
       inputStream.close();
       return encryptedFilePath;
    }
-   public String decryptDocument(File document, SecretKey secretKey) throws IOException, GeneralSecurityException{
+   public String decryptDocument(File document, SecretKey secretKey, String saveDirPath) throws IOException, GeneralSecurityException{
       String decryptedFileName = document.getName().replace(".sde","");
-      Path decryptedFilePath = document.toPath().resolveSibling(decryptedFileName);
+      Path decryptedFilePath = Path.of(saveDirPath, decryptedFileName);
       FileInputStream inputStream = new FileInputStream(document);
       FileOutputStream outputStream = new FileOutputStream(String.valueOf(decryptedFilePath));
       Cipher cipher = Cipher.getInstance("AES");
@@ -52,7 +53,20 @@ public class SecurityHandler {
       outputStream.flush();
       outputStream.close();
       cipherInputStream.close();
+      document.delete();
       return String.valueOf(decryptedFilePath);
+   }
+   public String encryptMessage(String message, SecretKey secretKey) throws NoSuchPaddingException, NoSuchAlgorithmException, InvalidKeyException, IllegalBlockSizeException, BadPaddingException {
+      Cipher cipher = Cipher.getInstance("AES");
+      cipher.init(Cipher.ENCRYPT_MODE, secretKey);
+      byte[] cipherText = cipher.doFinal(message.getBytes());
+      return Base64.getEncoder().encodeToString(cipherText);
+   }
+   public String decryptMessage(String message, SecretKey secretKey) throws NoSuchPaddingException, NoSuchAlgorithmException, InvalidKeyException, IllegalBlockSizeException, BadPaddingException {
+      Cipher cipher = Cipher.getInstance("AES");
+      cipher.init(Cipher.DECRYPT_MODE, secretKey);
+      byte[] plainText = cipher.doFinal(Base64.getDecoder().decode(message));
+      return new String(plainText);
    }
    public SecretKey createSessionKey() throws NoSuchAlgorithmException{
       KeyGenerator generator = KeyGenerator.getInstance("AES");
@@ -68,10 +82,10 @@ public class SecurityHandler {
       byte[] encryptedKey = cipher.doFinal(secretKey.getEncoded());
       return encryptedKey;
    }
-   public SecretKey decryptSessionKey(File privatekeyFile, byte[] encryptedKey) throws NoSuchPaddingException, NoSuchAlgorithmException, InvalidKeyException, IllegalBlockSizeException, BadPaddingException {
+   public SecretKey decryptSessionKey(File privateKeyFile, byte[] encryptedKey) throws NoSuchPaddingException, NoSuchAlgorithmException, InvalidKeyException, IllegalBlockSizeException, BadPaddingException {
       PrivateKey privateKey = null;
       try {
-         privateKey = SshKeyUtils.getPrivateKey(privatekeyFile,"").getPrivateKey().getJCEPrivateKey();
+         privateKey = SshKeyUtils.getPrivateKey(privateKeyFile,"").getPrivateKey().getJCEPrivateKey();
       } catch (InvalidPassphraseException | IOException e) {
          throw new RuntimeException(e);
       }

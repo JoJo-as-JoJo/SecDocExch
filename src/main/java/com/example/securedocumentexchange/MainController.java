@@ -1,20 +1,23 @@
 package com.example.securedocumentexchange;
 
 import com.sshtools.common.publickey.InvalidPassphraseException;
+import javafx.collections.FXCollections;
+import javafx.collections.ListChangeListener;
+import javafx.collections.ObservableList;
+import javafx.collections.SetChangeListener;
 import javafx.event.ActionEvent;
 import javafx.event.EventHandler;
 import javafx.fxml.FXML;
-import javafx.scene.control.Button;
-import javafx.scene.control.Tab;
-import javafx.scene.control.TabPane;
-import javafx.scene.control.TextField;
+import javafx.scene.control.*;
 import javafx.stage.DirectoryChooser;
 import javafx.stage.FileChooser;
 import javafx.stage.Window;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.attribute.AttributeView;
 import java.security.NoSuchAlgorithmException;
+import java.util.ArrayList;
 
 public class MainController {
     Window currentWindow;
@@ -34,6 +37,16 @@ public class MainController {
     private TextField pathToFileServer;
     @FXML
     private TextField pathToFileClient;
+    @FXML
+    private TextField pathToSaveDir;
+    @FXML
+    private TextField clientMessage;
+    @FXML
+    private TextField serverMessage;
+    @FXML
+    private ListView clientMessages;
+    @FXML
+    private ListView serverMessages;
     @FXML
     private TabPane tabs;
     @FXML
@@ -56,9 +69,16 @@ public class MainController {
     private Button chooseFileToSendClientBtn;
     @FXML
     void connectToServer(ActionEvent event) throws IOException, InvalidPassphraseException {
-        client = new Client(receiverAddress.getText(),Integer.parseInt(receiverPort.getText()), pathToPubKey.getText(), pathToPrivateKey.getText());
-        clientView.setDisable(false);
+        client = new Client(receiverAddress.getText(),Integer.parseInt(receiverPort.getText()), pathToPubKey.getText(), pathToPrivateKey.getText(), pathToSaveDir.getText());
         client.start();
+        client.messages.addListener(new ListChangeListener<String>() {
+            @Override
+            public void onChanged(Change<? extends String> change) {
+                clientMessages.getItems().add(change.toString());
+                clientMessages.refresh();
+            }
+        });
+        clientView.setDisable(false);
         choosePubKeyBtn.setDisable(true);
         choosePrivateKeyBtn.setDisable(true);
         clientUp.setText("Остановить соединение");
@@ -71,11 +91,16 @@ public class MainController {
     }
     @FXML
     void startServer(ActionEvent event) throws IOException, NoSuchAlgorithmException {
-        server = new Server(Integer.parseInt(serverPort.getText()));
-        serverView.setDisable(false);
+        server = new Server(Integer.parseInt(serverPort.getText()), pathToSaveDir.getText());
         server.start();
-        choosePubKeyBtn.setDisable(true);
-        choosePrivateKeyBtn.setDisable(true);
+        server.messages.addListener(new ListChangeListener<String>() {
+            @Override
+            public void onChanged(Change<? extends String> change) {
+                serverMessages.getItems().add(change.toString());
+                clientMessages.refresh();
+            }
+        });
+        serverView.setDisable(false);
         serverUp.setText("Остановить сервер");
         serverUp.setOnAction(new EventHandler<ActionEvent>() {
             @Override
@@ -106,19 +131,30 @@ public class MainController {
         if (file==null){
             return;
         }
-        Button btn = (Button) event.getSource();
-        switch (btn.getId()){
-        }
+        pathToSaveDir.setText(file.getAbsolutePath());
+        serverUp.setDisable(false);
     }
     @FXML
     void sendFile(ActionEvent event) throws Exception {
         Button btn = (Button) event.getSource();
         switch (btn.getId()){
-            case "clientSend" -> {
-                client.send(pathToFileClient.getText());
+            case "clientSendFile" -> {
+                client.sendFile(pathToFileClient.getText());
             }
-            case "serverSend" -> {
-                server.send(pathToFileServer.getText());
+            case "serverSendFile" -> {
+                server.sendFile(pathToFileServer.getText());
+            }
+        }
+    }
+    @FXML
+    void sendMessage(ActionEvent event) throws Exception{
+        Button btn = (Button) event.getSource();
+        switch (btn.getId()){
+            case "clientSendMessage" -> {
+                client.sendMessage(clientMessage.getText());
+            }
+            case "serverSendMessage" -> {
+                server.sendMessage(serverMessage.getText());
             }
         }
     }
