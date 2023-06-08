@@ -1,10 +1,10 @@
 package com.example.securedocumentexchange;
 
+import com.example.securedocumentexchange.Network.Client;
+import com.example.securedocumentexchange.Network.Server;
 import com.sshtools.common.publickey.InvalidPassphraseException;
 import javafx.collections.FXCollections;
-import javafx.collections.ListChangeListener;
 import javafx.collections.ObservableList;
-import javafx.collections.SetChangeListener;
 import javafx.event.ActionEvent;
 import javafx.event.EventHandler;
 import javafx.fxml.FXML;
@@ -15,9 +15,7 @@ import javafx.stage.Window;
 
 import java.io.File;
 import java.io.IOException;
-import java.nio.file.attribute.AttributeView;
 import java.security.NoSuchAlgorithmException;
-import java.util.ArrayList;
 
 public class MainController {
     Window currentWindow;
@@ -67,17 +65,14 @@ public class MainController {
     private Button chooseFileToSendServerBtn;
     @FXML
     private Button chooseFileToSendClientBtn;
+    ObservableList<String> clientMSG = FXCollections.observableArrayList();
+    ObservableList<String> serverMSG = FXCollections.observableArrayList();
     @FXML
     void connectToServer(ActionEvent event) throws IOException, InvalidPassphraseException {
-        client = new Client(receiverAddress.getText(),Integer.parseInt(receiverPort.getText()), pathToPubKey.getText(), pathToPrivateKey.getText(), pathToSaveDir.getText());
+        client = new Client(receiverAddress.getText(),Integer.parseInt(receiverPort.getText()), pathToPubKey.getText(), pathToPrivateKey.getText(), pathToSaveDir.getText(), clientMSG);
+        client.setDaemon(true);
         client.start();
-        client.messages.addListener(new ListChangeListener<String>() {
-            @Override
-            public void onChanged(Change<? extends String> change) {
-                clientMessages.getItems().add(change.toString());
-                clientMessages.refresh();
-            }
-        });
+        clientMessages.setItems(clientMSG);
         clientView.setDisable(false);
         choosePubKeyBtn.setDisable(true);
         choosePrivateKeyBtn.setDisable(true);
@@ -91,15 +86,10 @@ public class MainController {
     }
     @FXML
     void startServer(ActionEvent event) throws IOException, NoSuchAlgorithmException {
-        server = new Server(Integer.parseInt(serverPort.getText()), pathToSaveDir.getText());
+        server = new Server(Integer.parseInt(serverPort.getText()), pathToSaveDir.getText(), serverMSG);
+        server.setDaemon(true);
         server.start();
-        server.messages.addListener(new ListChangeListener<String>() {
-            @Override
-            public void onChanged(Change<? extends String> change) {
-                serverMessages.getItems().add(change.toString());
-                clientMessages.refresh();
-            }
-        });
+        serverMessages.setItems(serverMSG);
         serverView.setDisable(false);
         serverUp.setText("Остановить сервер");
         serverUp.setOnAction(new EventHandler<ActionEvent>() {

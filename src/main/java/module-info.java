@@ -7,4 +7,8 @@ module com.example.securedocumentexchange {
 
     opens com.example.securedocumentexchange to javafx.fxml;
     exports com.example.securedocumentexchange;
+    exports com.example.securedocumentexchange.Network;
+    opens com.example.securedocumentexchange.Network to javafx.fxml;
+    exports com.example.securedocumentexchange.Security;
+    opens com.example.securedocumentexchange.Security to javafx.fxml;
 }

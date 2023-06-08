@@ -1,4 +1,4 @@
-package com.example.securedocumentexchange;
+package com.example.securedocumentexchange.Network;
 
 import java.io.*;
 import java.lang.constant.Constable;
@@ -49,7 +49,7 @@ public class SocketHandler {
     public void sendFlag(char flag, DataOutputStream dataOutputStream) throws IOException {
         dataOutputStream.writeChar(flag);
     }
-    public Constable receiveFlag(String path, DataInputStream dataInputStream){
+    public Constable receiveData(String path, DataInputStream dataInputStream){
         try {
             char flag = dataInputStream.readChar();
             switch (flag){

@@ -1,6 +1,7 @@
-package com.example.securedocumentexchange;
+package com.example.securedocumentexchange.Network;
+import com.example.securedocumentexchange.Security.SecurityHandler;
 import com.sshtools.common.publickey.InvalidPassphraseException;
-import javafx.collections.FXCollections;
+import javafx.application.Platform;
 import javafx.collections.ObservableList;
 
 import javax.crypto.BadPaddingException;
@@ -14,31 +15,35 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
+import java.util.ArrayList;
+import java.util.List;
 
-public class Client extends Thread{
+public class Client<T> extends Thread{
     private boolean doStop = false;
-    private Path tmpDir;
+    private boolean updateWaiting = false;
+    private final Path tmpDir;
     private Path pubKeyPath;
     private Path privateKeyPath;
-    private String saveDir;
-    private SecurityHandler securityHandler;
-    private SocketHandler socketHandler;
-    private Socket socket;
-    private DataInputStream input;
-    private DataOutputStream out;
+    private final String saveDir;
+    private final SecurityHandler securityHandler;
+    private final SocketHandler socketHandler;
+    private final Socket socket;
+    private final DataInputStream input;
+    private final DataOutputStream out;
     private SecretKey secretKey;
-    public ObservableList<String> messages = FXCollections.observableArrayList("Сообщения");
+    private final ObservableList<String> messages;
+    private final Object lock = new Object();
     public synchronized void doStop(){
         this.doStop = true;
     }
     private synchronized boolean keepRunning(){
         return doStop;
     }
-    public Client(String address, Integer port, String initOpenKeyPath, String initPrivateKeyPath, String saveDir) throws IOException, InvalidPassphraseException {
+    public Client(String address, Integer port, String initOpenKeyPath, String initPrivateKeyPath, String saveDir, ObservableList<String> messages) throws IOException, InvalidPassphraseException {
         this.tmpDir = Files.createTempDirectory("");
         this.securityHandler = new SecurityHandler();
         this.socketHandler = new SocketHandler();
-        if (securityHandler.validatePubKey(new File(initOpenKeyPath))==true && securityHandler.validatePrivateKey(new File(initPrivateKeyPath))==true){
+        if (securityHandler.validatePubKey(new File(initOpenKeyPath)) && securityHandler.validatePrivateKey(new File(initPrivateKeyPath))){
             this.pubKeyPath = securityHandler.getPath(initOpenKeyPath, tmpDir);
             this.privateKeyPath = securityHandler.getPath(initPrivateKeyPath, tmpDir);
             Files.copy(Paths.get(initOpenKeyPath), pubKeyPath);
@@ -48,6 +53,7 @@ public class Client extends Thread{
         this.input = new DataInputStream(socket.getInputStream());
         this.out = new DataOutputStream(socket.getOutputStream());
         this.saveDir = saveDir;
+        this.messages = messages;
     }
     @Override
     public void run() {
@@ -61,17 +67,17 @@ public class Client extends Thread{
         }
         while (!keepRunning()){
             try {
-                String EncMsg = socketHandler.receiveFlag(String.valueOf(tmpDir), input).toString();
+                String EncMsg = socketHandler.receiveData(String.valueOf(tmpDir), input).toString();
                 File receivedFile = new File(EncMsg);
                 if (receivedFile.isFile()) {
                     securityHandler.decryptDocument(receivedFile, secretKey, saveDir);
-                    messages.add("Вам прислали файл!");
                 }
                 else {
                     String message = "Вам: " + securityHandler.decryptMessage(EncMsg, secretKey);
-                    messages.add(message);
+                    publish((T) message);
                 }
-            } catch (Exception e) {
+            }
+            catch (Exception e) {
                 throw new RuntimeException(e);
             }
         }
@@ -85,6 +91,29 @@ public class Client extends Thread{
         socketHandler.sendFlag('M', out);
         socketHandler.sendMessage(securityHandler.encryptMessage(message, secretKey), out);
         String msg = "Вы: " + message;
-        messages.add(msg);
+        publish((T) msg);
+    }
+    private void publish(T... values){
+        synchronized (lock){
+            for (T v : values){
+                messages.add((String) v);
+            }
+            if (!updateWaiting) {
+                updateWaiting = true;
+                Platform.runLater(this::update);
+            }
+        }
+    }
+    private void update(){
+        List<String> chunks;
+        synchronized (lock){
+            chunks = new ArrayList<String>(messages);
+            messages.clear();
+            updateWaiting = false;
+        }
+        process(chunks);
+    }
+    private void process(List<String> chunks){
+        messages.addAll(chunks);
     }
 }

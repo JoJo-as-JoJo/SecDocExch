@@ -1,5 +1,7 @@
-package com.example.securedocumentexchange;
+package com.example.securedocumentexchange.Network;
 
+import com.example.securedocumentexchange.Security.SecurityHandler;
+import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 
@@ -14,9 +16,11 @@ import java.nio.file.Path;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
+import java.util.List;
 
-public class Server extends Thread {
+public class Server<T> extends Thread{
     private boolean doStop = false;
+    private boolean updateWaiting = false;
     private Path tmpDir;
     private String saveDir;
     private SecurityHandler securityHandler;
@@ -26,20 +30,22 @@ public class Server extends Thread {
     private DataInputStream input;
     private DataOutputStream out;
     private SecretKey secretKey;
-    public ObservableList<String> messages = FXCollections.observableArrayList("Сообщения");
+    private final ObservableList<String> messages;
+    private final Object lock = new Object();
     public synchronized void doStop(){
         this.doStop = true;
     }
     private synchronized boolean keepRunning(){
         return this.doStop;
     }
-    public Server(Integer port, String saveDir) throws IOException, NoSuchAlgorithmException {
+    public Server(Integer port, String saveDir, ObservableList<String> messages) throws IOException, NoSuchAlgorithmException {
         this.tmpDir = Files.createTempDirectory("");
         this.securityHandler = new SecurityHandler();
         this.socketHandler = new SocketHandler();
         this.serverSocket = new ServerSocket(port);
         this.secretKey = securityHandler.createSessionKey();
         this.saveDir = saveDir;
+        this.messages = messages;
     }
     @Override
     public void run() {
@@ -51,7 +57,7 @@ public class Server extends Thread {
         try {
             input = new DataInputStream(clientSocket.getInputStream());
             out = new DataOutputStream(clientSocket.getOutputStream());
-            socketHandler.receiveFlag(String.valueOf(tmpDir), input);
+            socketHandler.receiveData(String.valueOf(tmpDir), input);
             socketHandler.sendKey(securityHandler.encryptSessionKey(new File(String.valueOf(tmpDir)+File.separator+"clientPubKey.pub"), secretKey), out);
         } catch (IOException e) {
             throw new RuntimeException(e);
@@ -60,15 +66,14 @@ public class Server extends Thread {
         }
         while (!keepRunning()){
             try {
-                String EncMsg = socketHandler.receiveFlag(String.valueOf(tmpDir), input).toString();
+                String EncMsg = socketHandler.receiveData(String.valueOf(tmpDir), input).toString();
                 File receivedFile = new File(EncMsg);
                 if (receivedFile.isFile()) {
                     securityHandler.decryptDocument(receivedFile, secretKey, saveDir);
-                    messages.add("Вам прислали файл!");
                 }
                 else {
                     String message = "Вам: " + securityHandler.decryptMessage(EncMsg, secretKey);
-                    messages.add(message);
+                    publish((T) message);
                 }
             } catch (Exception e) {
                 throw new RuntimeException(e);
@@ -84,6 +89,29 @@ public class Server extends Thread {
         socketHandler.sendFlag('M', out);
         socketHandler.sendMessage(securityHandler.encryptMessage(message, secretKey), out);
         String msg = "Вы: " + message;
-        messages.add(msg);
+        publish((T) msg);
+    }
+    private void publish(T... values){
+        synchronized (lock){
+            for (T v : values){
+                messages.add((String) v);
+            }
+            if (!updateWaiting) {
+                updateWaiting = true;
+                Platform.runLater(this::update);
+            }
+        }
+    }
+    private void update(){
+        List<String> chunks;
+        synchronized (lock){
+            chunks = new ArrayList<String>(messages);
+            messages.clear();
+            updateWaiting = false;
+        }
+        process(chunks);
+    }
+    private void process(List<String> chunks){
+        messages.addAll(chunks);
     }
 }

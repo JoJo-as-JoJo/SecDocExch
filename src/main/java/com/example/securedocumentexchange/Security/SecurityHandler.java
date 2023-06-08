@@ -1,4 +1,4 @@
-package com.example.securedocumentexchange;
+package com.example.securedocumentexchange.Security;
 
 import com.sshtools.common.publickey.InvalidPassphraseException;
 import com.sshtools.common.publickey.SshKeyUtils;
