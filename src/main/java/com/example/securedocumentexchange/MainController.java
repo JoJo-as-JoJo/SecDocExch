@@ -2,6 +2,7 @@ package com.example.securedocumentexchange;
 
 import com.example.securedocumentexchange.Network.Client;
 import com.example.securedocumentexchange.Network.Server;
+import com.example.securedocumentexchange.Security.SecurityHandler;
 import com.sshtools.common.publickey.InvalidPassphraseException;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
@@ -21,6 +22,7 @@ public class MainController {
     Window currentWindow;
     private Server server;
     private Client client;
+    private SecurityHandler securityHandler = new SecurityHandler();
     @FXML
     private TextField receiverAddress;
     @FXML
@@ -69,20 +71,22 @@ public class MainController {
     ObservableList<String> serverMSG = FXCollections.observableArrayList();
     @FXML
     void connectToServer(ActionEvent event) throws IOException, InvalidPassphraseException {
-        client = new Client(receiverAddress.getText(),Integer.parseInt(receiverPort.getText()), pathToPubKey.getText(), pathToPrivateKey.getText(), pathToSaveDir.getText(), clientMSG);
-        client.setDaemon(true);
-        client.start();
-        clientMessages.setItems(clientMSG);
-        clientView.setDisable(false);
-        choosePubKeyBtn.setDisable(true);
-        choosePrivateKeyBtn.setDisable(true);
-        clientUp.setText("Остановить соединение");
-        clientUp.setOnAction(new EventHandler<ActionEvent>() {
-            @Override
-            public void handle(ActionEvent event) {
-                client.doStop();
-            }
-        });
+        if (securityHandler.validatePubKey(new File(pathToPubKey.getText())) && securityHandler.validatePrivateKey(new File(pathToPrivateKey.getText()))) {
+            client = new Client(receiverAddress.getText(), Integer.parseInt(receiverPort.getText()), pathToPubKey.getText(), pathToPrivateKey.getText(), pathToSaveDir.getText(), clientMSG);
+            client.setDaemon(true);
+            client.start();
+            clientMessages.setItems(clientMSG);
+            clientView.setDisable(false);
+            choosePubKeyBtn.setDisable(true);
+            choosePrivateKeyBtn.setDisable(true);
+            clientUp.setText("Остановить соединение");
+            clientUp.setOnAction(new EventHandler<ActionEvent>() {
+                @Override
+                public void handle(ActionEvent event) {
+                    client.doStop();
+                }
+            });
+        }
     }
     @FXML
     void startServer(ActionEvent event) throws IOException, NoSuchAlgorithmException {

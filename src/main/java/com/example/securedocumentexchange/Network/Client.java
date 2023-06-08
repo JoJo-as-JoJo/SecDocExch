@@ -43,12 +43,10 @@ public class Client<T> extends Thread{
         this.tmpDir = Files.createTempDirectory("");
         this.securityHandler = new SecurityHandler();
         this.socketHandler = new SocketHandler();
-        if (securityHandler.validatePubKey(new File(initOpenKeyPath)) && securityHandler.validatePrivateKey(new File(initPrivateKeyPath))){
-            this.pubKeyPath = securityHandler.getPath(initOpenKeyPath, tmpDir);
-            this.privateKeyPath = securityHandler.getPath(initPrivateKeyPath, tmpDir);
-            Files.copy(Paths.get(initOpenKeyPath), pubKeyPath);
-            Files.copy(Paths.get(initPrivateKeyPath), privateKeyPath);
-        }
+        this.pubKeyPath = securityHandler.getPath(initOpenKeyPath, tmpDir);
+        this.privateKeyPath = securityHandler.getPath(initPrivateKeyPath, tmpDir);
+        Files.copy(Paths.get(initOpenKeyPath), pubKeyPath);
+        Files.copy(Paths.get(initPrivateKeyPath), privateKeyPath);
         this.socket = new Socket(address, port);
         this.input = new DataInputStream(socket.getInputStream());
         this.out = new DataOutputStream(socket.getOutputStream());
