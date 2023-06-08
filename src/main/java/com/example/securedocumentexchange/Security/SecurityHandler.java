@@ -15,10 +15,22 @@ import java.nio.file.Path;
 import java.security.*;
 import java.util.Base64;
 
+/**
+ * Handles encrypting/decrypting files,
+ * Generates AES keys,
+ * Validate keys
+ */
 public class SecurityHandler {
+   /**
+    * Return path to witch keys should be stored
+    */
    public Path getPath(String initialFilePath, Path destDirPath){
       return Path.of(String.valueOf(destDirPath), String.valueOf(Path.of(initialFilePath).getFileName()));
    }
+
+   /**
+    * Encrypt document and return path to it
+    */
    public String encryptDocument(File document, Path pthToDir, SecretKey secretKey) throws IOException, GeneralSecurityException{
       String encryptedFileName = document.getName()+".sde";
       String encryptedFilePath = String.valueOf(pthToDir)+File.separator+encryptedFileName;
@@ -37,6 +49,9 @@ public class SecurityHandler {
       inputStream.close();
       return encryptedFilePath;
    }
+   /**
+    * Decrypt document and return path to it
+    */
    public String decryptDocument(File document, SecretKey secretKey, String saveDirPath) throws IOException, GeneralSecurityException{
       String decryptedFileName = document.getName().replace(".sde","");
       Path decryptedFilePath = Path.of(saveDirPath, decryptedFileName);
@@ -56,24 +71,36 @@ public class SecurityHandler {
       document.delete();
       return String.valueOf(decryptedFilePath);
    }
+   /**
+    * Encrypt message
+    */
    public String encryptMessage(String message, SecretKey secretKey) throws NoSuchPaddingException, NoSuchAlgorithmException, InvalidKeyException, IllegalBlockSizeException, BadPaddingException {
       Cipher cipher = Cipher.getInstance("AES");
       cipher.init(Cipher.ENCRYPT_MODE, secretKey);
       byte[] cipherText = cipher.doFinal(message.getBytes());
       return Base64.getEncoder().encodeToString(cipherText);
    }
+   /**
+    * Decrypt message
+    */
    public String decryptMessage(String message, SecretKey secretKey) throws NoSuchPaddingException, NoSuchAlgorithmException, InvalidKeyException, IllegalBlockSizeException, BadPaddingException {
       Cipher cipher = Cipher.getInstance("AES");
       cipher.init(Cipher.DECRYPT_MODE, secretKey);
       byte[] plainText = cipher.doFinal(Base64.getDecoder().decode(message));
       return new String(plainText);
    }
+   /**
+    * Generate AES key
+    */
    public SecretKey createSessionKey() throws NoSuchAlgorithmException{
       KeyGenerator generator = KeyGenerator.getInstance("AES");
       generator.init(128);
       SecretKey secretKey = generator.generateKey();
       return secretKey;
    }
+   /**
+    * Encrypt session key
+    */
    public byte[] encryptSessionKey(File openKeyFile, SecretKey secretKey) throws IOException, NoSuchPaddingException, NoSuchAlgorithmException, InvalidKeyException, IllegalBlockSizeException, BadPaddingException {
       SshPublicKey sshPublicKey = SshKeyUtils.getPublicKey(openKeyFile);
       PublicKey publicKey = sshPublicKey.getJCEPublicKey();
@@ -82,6 +109,9 @@ public class SecurityHandler {
       byte[] encryptedKey = cipher.doFinal(secretKey.getEncoded());
       return encryptedKey;
    }
+   /**
+    * Decrypt session key
+    */
    public SecretKey decryptSessionKey(File privateKeyFile, byte[] encryptedKey) throws NoSuchPaddingException, NoSuchAlgorithmException, InvalidKeyException, IllegalBlockSizeException, BadPaddingException {
       PrivateKey privateKey = null;
       try {
@@ -95,10 +125,18 @@ public class SecurityHandler {
       SecretKey originalKey = new SecretKeySpec(decryptedKey, 0, decryptedKey.length,"AES");
       return originalKey;
    }
+
+   /**
+    * Validate provided Publickey
+    */
    public boolean validatePubKey(File pubKeyFile) throws IOException {
       SshPublicKey sshPublicKey = SshKeyUtils.getPublicKey(pubKeyFile);
       return true;
    }
+
+   /**
+    * Validate provided PrivateKey
+    */
    public boolean validatePrivateKey(File privateKeyFile) throws IOException, InvalidPassphraseException {
       SshPrivateKey sshPrivateKey = SshKeyUtils.getPrivateKey(privateKeyFile, "").getPrivateKey();
       return true;

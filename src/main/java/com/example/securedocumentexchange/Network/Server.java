@@ -2,7 +2,6 @@ package com.example.securedocumentexchange.Network;
 
 import com.example.securedocumentexchange.Security.SecurityHandler;
 import javafx.application.Platform;
-import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 
 import javax.crypto.BadPaddingException;
@@ -18,6 +17,9 @@ import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * Server instance
+ */
 public class Server<T> extends Thread{
     private boolean doStop = false;
     private boolean updateWaiting = false;
@@ -32,12 +34,19 @@ public class Server<T> extends Thread{
     private SecretKey secretKey;
     private final ObservableList<String> messages;
     private final Object lock = new Object();
+
+    /**
+     * Stop Thread
+     */
     public synchronized void doStop(){
         this.doStop = true;
     }
     private synchronized boolean keepRunning(){
         return this.doStop;
     }
+    /**
+     * Class constructor
+     */
     public Server(Integer port, String saveDir, ObservableList<String> messages) throws IOException, NoSuchAlgorithmException {
         this.tmpDir = Files.createTempDirectory("");
         this.securityHandler = new SecurityHandler();
@@ -47,6 +56,10 @@ public class Server<T> extends Thread{
         this.saveDir = saveDir;
         this.messages = messages;
     }
+
+    /**
+     * Working loop
+     */
     @Override
     public void run() {
         try {
@@ -66,13 +79,13 @@ public class Server<T> extends Thread{
         }
         while (!keepRunning()){
             try {
-                String EncMsg = socketHandler.receiveData(String.valueOf(tmpDir), input).toString();
-                File receivedFile = new File(EncMsg);
+                String encMsg = socketHandler.receiveData(String.valueOf(tmpDir), input).toString();
+                File receivedFile = new File(encMsg);
                 if (receivedFile.isFile()) {
                     securityHandler.decryptDocument(receivedFile, secretKey, saveDir);
                 }
                 else {
-                    String message = "Вам: " + securityHandler.decryptMessage(EncMsg, secretKey);
+                    String message = "Вам: " + securityHandler.decryptMessage(encMsg, secretKey);
                     publish((T) message);
                 }
             } catch (Exception e) {
@@ -80,6 +93,9 @@ public class Server<T> extends Thread{
             }
         }
     }
+    /**
+     * Encrypt and send file via socket
+     */
     public void sendFile(String pathToFile) throws Exception {
         socketHandler.sendFlag('F', out);
         String pthToEncFile = securityHandler.encryptDocument(new File(pathToFile), tmpDir, secretKey);
@@ -91,6 +107,9 @@ public class Server<T> extends Thread{
         String msg = "Вы: " + message;
         publish((T) msg);
     }
+    /**
+     * Encrypt and send message via socket
+     */
     private void publish(T... values){
         synchronized (lock){
             for (T v : values){
@@ -105,7 +124,7 @@ public class Server<T> extends Thread{
     private void update(){
         List<String> chunks;
         synchronized (lock){
-            chunks = new ArrayList<String>(messages);
+            chunks = new ArrayList<>(messages);
             messages.clear();
             updateWaiting = false;
         }

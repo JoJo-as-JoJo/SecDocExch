@@ -1,6 +1,5 @@
 package com.example.securedocumentexchange.Network;
 import com.example.securedocumentexchange.Security.SecurityHandler;
-import com.sshtools.common.publickey.InvalidPassphraseException;
 import javafx.application.Platform;
 import javafx.collections.ObservableList;
 
@@ -18,6 +17,9 @@ import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * Client instance
+ */
 public class Client<T> extends Thread{
     private boolean doStop = false;
     private boolean updateWaiting = false;
@@ -33,13 +35,20 @@ public class Client<T> extends Thread{
     private SecretKey secretKey;
     private final ObservableList<String> messages;
     private final Object lock = new Object();
+
+    /**
+     * Stop thread
+     */
     public synchronized void doStop(){
         this.doStop = true;
     }
     private synchronized boolean keepRunning(){
         return doStop;
     }
-    public Client(String address, Integer port, String initOpenKeyPath, String initPrivateKeyPath, String saveDir, ObservableList<String> messages) throws IOException, InvalidPassphraseException {
+    /**
+     * Class constructor
+     */
+    public Client(String address, Integer port, String initOpenKeyPath, String initPrivateKeyPath, String saveDir, ObservableList<String> messages) throws IOException{
         this.tmpDir = Files.createTempDirectory("");
         this.securityHandler = new SecurityHandler();
         this.socketHandler = new SocketHandler();
@@ -53,6 +62,9 @@ public class Client<T> extends Thread{
         this.saveDir = saveDir;
         this.messages = messages;
     }
+    /**
+     * Working loop
+     */
     @Override
     public void run() {
         try {
@@ -65,13 +77,13 @@ public class Client<T> extends Thread{
         }
         while (!keepRunning()){
             try {
-                String EncMsg = socketHandler.receiveData(String.valueOf(tmpDir), input).toString();
-                File receivedFile = new File(EncMsg);
+                String encMsg = socketHandler.receiveData(String.valueOf(tmpDir), input).toString();
+                File receivedFile = new File(encMsg);
                 if (receivedFile.isFile()) {
                     securityHandler.decryptDocument(receivedFile, secretKey, saveDir);
                 }
                 else {
-                    String message = "Вам: " + securityHandler.decryptMessage(EncMsg, secretKey);
+                    String message = "Вам: " + securityHandler.decryptMessage(encMsg, secretKey);
                     publish((T) message);
                 }
             }
@@ -80,11 +92,17 @@ public class Client<T> extends Thread{
             }
         }
     }
+    /**
+     * Encrypt and send file via socket
+     */
     public void sendFile(String pathToFile) throws Exception {
         socketHandler.sendFlag('F', out);
         String pthToEncFile = securityHandler.encryptDocument(new File(pathToFile), tmpDir, secretKey);
         socketHandler.sendFile(pthToEncFile, new File(pthToEncFile).getName(), out);
     }
+    /**
+     * Encrypt and send message via socket
+     */
     public void sendMessage(String message) throws IOException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException {
         socketHandler.sendFlag('M', out);
         socketHandler.sendMessage(securityHandler.encryptMessage(message, secretKey), out);
@@ -105,7 +123,7 @@ public class Client<T> extends Thread{
     private void update(){
         List<String> chunks;
         synchronized (lock){
-            chunks = new ArrayList<String>(messages);
+            chunks = new ArrayList<>(messages);
             messages.clear();
             updateWaiting = false;
         }

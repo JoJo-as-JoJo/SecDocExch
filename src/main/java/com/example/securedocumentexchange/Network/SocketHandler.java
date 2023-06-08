@@ -2,8 +2,13 @@ package com.example.securedocumentexchange.Network;
 
 import java.io.*;
 import java.lang.constant.Constable;
-
+/**
+ * Handles data transmission via socket
+ */
 public class SocketHandler {
+    /**
+     * Send file via socket
+     */
     public void sendFile(String path, String fileNameForReceiver, DataOutputStream dataOutputStream) throws Exception {
         dataOutputStream.writeUTF(fileNameForReceiver);
         int bytes = 0;
@@ -17,6 +22,9 @@ public class SocketHandler {
         }
         fileInputStream.close();
     }
+    /**
+     * Received file handler
+     */
     public String receiveFile(String path,DataInputStream dataInputStream) throws Exception {
         String fileName = dataInputStream.readUTF();
         int bytes = 0;
@@ -30,25 +38,45 @@ public class SocketHandler {
         fileOutputStream.close();
         return path+File.separator+fileName;
     }
+    /**
+     * Send message via socket
+     */
     public void sendMessage(String message, DataOutputStream dataOutputStream) throws IOException {
         dataOutputStream.writeUTF(message);
     }
+    /**
+     * Received message handler
+     */
     public String receiveMessage(DataInputStream dataInputStream) throws IOException {
         return dataInputStream.readUTF();
     }
+    /**
+     * Send key via socket
+     */
     public void sendKey(byte[] encryptedSessionKey, DataOutputStream dataOutputStream) throws IOException {
         dataOutputStream.writeInt(encryptedSessionKey.length);
         dataOutputStream.write(encryptedSessionKey);
     }
+    /**
+     * Received key handler
+     */
     public byte[] receiveKey(DataInputStream dataInputStream) throws IOException {
         int size = dataInputStream.readInt();
         byte[] encryptedSessionKey = new byte[size];
         dataInputStream.read(encryptedSessionKey, 0, size);
         return encryptedSessionKey;
     }
+
+    /**
+     * Send indicator char via socket
+     */
     public void sendFlag(char flag, DataOutputStream dataOutputStream) throws IOException {
         dataOutputStream.writeChar(flag);
     }
+
+    /**
+     * Receive data via socket
+     */
     public Constable receiveData(String path, DataInputStream dataInputStream){
         try {
             char flag = dataInputStream.readChar();

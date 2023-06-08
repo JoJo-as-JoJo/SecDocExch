@@ -17,7 +17,9 @@ import javafx.stage.Window;
 import java.io.File;
 import java.io.IOException;
 import java.security.NoSuchAlgorithmException;
-
+/**
+ * Controller class
+ */
 public class MainController {
     Window currentWindow;
     private Server server;
@@ -67,8 +69,11 @@ public class MainController {
     private Button chooseFileToSendServerBtn;
     @FXML
     private Button chooseFileToSendClientBtn;
-    ObservableList<String> clientMSG = FXCollections.observableArrayList();
-    ObservableList<String> serverMSG = FXCollections.observableArrayList();
+    private ObservableList<String> clientMSG = FXCollections.observableArrayList();
+    private ObservableList<String> serverMSG = FXCollections.observableArrayList();
+    /**
+     * Try to create connection with server
+     */
     @FXML
     void connectToServer(ActionEvent event) throws IOException, InvalidPassphraseException {
         if (securityHandler.validatePubKey(new File(pathToPubKey.getText())) && securityHandler.validatePrivateKey(new File(pathToPrivateKey.getText()))) {
@@ -88,6 +93,10 @@ public class MainController {
             });
         }
     }
+
+    /**
+     * Try to create a server
+     */
     @FXML
     void startServer(ActionEvent event) throws IOException, NoSuchAlgorithmException {
         server = new Server(Integer.parseInt(serverPort.getText()), pathToSaveDir.getText(), serverMSG);
@@ -103,6 +112,10 @@ public class MainController {
             }
         });
     }
+
+    /**
+     * Choose a file
+     */
     @FXML
     void chooseFile(ActionEvent event){
         FileChooser fileChooser = new FileChooser();
@@ -118,6 +131,9 @@ public class MainController {
             case "chooseFileToSendClientBtn" -> pathToFileClient.setText(file.getAbsolutePath());
         }
     }
+    /**
+     * Choose a directory
+     */
     @FXML
     void chooseDirectory(ActionEvent event){
         DirectoryChooser directoryChooser = new DirectoryChooser();
@@ -128,28 +144,27 @@ public class MainController {
         pathToSaveDir.setText(file.getAbsolutePath());
         serverUp.setDisable(false);
     }
+
+    /**
+     * Send file via established connection
+     */
     @FXML
     void sendFile(ActionEvent event) throws Exception {
         Button btn = (Button) event.getSource();
         switch (btn.getId()){
-            case "clientSendFile" -> {
-                client.sendFile(pathToFileClient.getText());
-            }
-            case "serverSendFile" -> {
-                server.sendFile(pathToFileServer.getText());
-            }
+            case "clientSendFile" -> client.sendFile(pathToFileClient.getText());
+            case "serverSendFile" -> server.sendFile(pathToFileServer.getText());
         }
     }
+    /**
+     * Send message via established connection
+     */
     @FXML
     void sendMessage(ActionEvent event) throws Exception{
         Button btn = (Button) event.getSource();
         switch (btn.getId()){
-            case "clientSendMessage" -> {
-                client.sendMessage(clientMessage.getText());
-            }
-            case "serverSendMessage" -> {
-                server.sendMessage(serverMessage.getText());
-            }
+            case "clientSendMessage" -> client.sendMessage(clientMessage.getText());
+            case "serverSendMessage" -> server.sendMessage(serverMessage.getText());
         }
     }
 }
